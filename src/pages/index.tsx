@@ -1,15 +1,22 @@
-import { Box, Button, Container, Paper, TextField, Typography } from '@mui/material'
+import { Box, Button, Container, Grid, Paper, TextField, Typography } from '@mui/material'
 import type { NextPage } from 'next'
 import Head from 'next/head'
 import { defaultTheme } from '~/styles/theme'
 import 'regenerator-runtime'
 
 import SpeechRecognition, { useSpeechRecognition } from 'react-speech-recognition'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+
+type Words = {
+  word: string
+  prev: string
+}
 
 const Home: NextPage = () => {
   const theme = defaultTheme
   const { transcript, resetTranscript } = useSpeechRecognition()
+  const [text, setText] = useState<string>('')
+  const [words, setWords] = useState<Words>({ word: '', prev: '' })
 
   const startSpeechRecognition = () => {
     SpeechRecognition.startListening({
@@ -20,7 +27,26 @@ const Home: NextPage = () => {
   }
 
   useEffect(() => {
-    console.log(transcript)
+    setWords((prev) => {
+      const diff = transcript.length - prev.prev.length
+      const word = transcript.slice(-diff, transcript.length)
+      const result = text.indexOf(word)
+      setText((prev) => {
+        const res =
+          prev.slice(0, result) +
+          '`' +
+          prev.slice(result, result + word.length) +
+          '`' +
+          prev.slice(result + word.length)
+        return res
+      })
+
+      console.log(text)
+      return {
+        word: word,
+        prev: transcript,
+      }
+    })
   }, [transcript])
 
   return (
@@ -31,27 +57,59 @@ const Home: NextPage = () => {
         <link rel='icon' href='/favicon.ico' />
       </Head>
 
-      <Box component='div'>
-        <Container maxWidth='sm' sx={{ mt: theme.spacing(20) }}>
-          <Box sx={{ borderRadius: theme.spacing(1), border: '2px solid' }}>
-            <Box
-              sx={{
-                backgroundColor: theme.palette.primary.main,
-              }}
-            >
-              <Box sx={{ paddingX: theme.spacing(1), color: theme.palette.text.secondary }}>Menu</Box>
-            </Box>
-            <Paper sx={{ padding: theme.spacing(4) }}>
-              テキストを入力
-              <TextField multiline fullWidth rows={20} sx={{ backgroundColor: theme.palette.background.paper }} />
-              <Typography>トランスパイル{transcript}</Typography>
-            </Paper>
-          </Box>
+      <Container maxWidth='md'>
+        <Box sx={{ mt: theme.spacing(20), border: 'solid', borderRadius: theme.spacing(1) }}>
+          <Box sx={{ height: theme.spacing(4), backgroundColor: theme.palette.primary.main, mb: theme.spacing(4) }} />
+          <Grid
+            container
+            justifyContent='center'
+            sx={{
+              borderRadius: theme.spacing(1),
+              display: 'flex',
+              gap: 2,
+            }}
+          >
+            <Grid item xs={5}>
+              <Paper sx={{ padding: theme.spacing(4) }}>
+                テキストを入力
+                <TextField
+                  multiline
+                  fullWidth
+                  rows={20}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  sx={{ backgroundColor: theme.palette.background.paper }}
+                />
+              </Paper>
+            </Grid>
+            <Grid item xs={5}>
+              <Paper sx={{ padding: theme.spacing(4) }}>
+                変換結果
+                <Box sx={{ border: '1.5px solid', borderRadius: theme.spacing(0.5), padding: theme.spacing(2) }}>
+                  {text.split('`').map((word, index) => {
+                    if (index % 2 == 0) {
+                      return (
+                        <Typography key={index} variant='body1' sx={{ display: 'inline' }}>
+                          {word}
+                        </Typography>
+                      )
+                    } else {
+                      return (
+                        <Typography key={index} variant='body1' sx={{ fontWeight: '700', display: 'inline' }}>
+                          {word}
+                        </Typography>
+                      )
+                    }
+                  })}
+                </Box>
+              </Paper>
+            </Grid>
+          </Grid>
           <Button onClick={startSpeechRecognition}>音声認識スタート</Button>
           <Button onClick={SpeechRecognition.stopListening}>音声認識ストップ</Button>
           <Button onClick={resetTranscript}>文章リセット</Button>
-        </Container>
-      </Box>
+        </Box>
+      </Container>
     </div>
   )
 }
